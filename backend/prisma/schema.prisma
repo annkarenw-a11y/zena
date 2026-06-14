@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String                @id @default(cuid())
+  email             String                @unique @db.VarChar(255)
+  password          String?               @db.VarChar(255)
+  firstName         String                @db.VarChar(100)
+  lastName          String                @db.VarChar(100)
+  googleId          String?               @unique @db.VarChar(255)
+  profileImage      String?               @db.Text
+  emailVerified     Boolean               @default(false)
+  isActive          Boolean               @default(true)
+  role              String                @default("user")
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  lastLogin         DateTime?
+  
+  profile           UserProfile?
+  chats             Chat[]
+  messages          Message[]
+  medicalRecords    MedicalRecord[]
+  sosContacts       SOSContact[]
+  notifications     Notification[]
+  appointments      Appointment[]
+  auditLogs         AuditLog[]
+  
+  @@index([email])
+  @@index([googleId])
+}
+
+model UserProfile {
+  id                String                @id @default(cuid())
+  userId            String                @unique
+  age               Int?
+  gender            String?
+  height            Float?
+  weight            Float?
+  bloodType         String?
+  allergies         String[]              @default([])
+  existingConditions String[]             @default([])
+  currentMedications String[]             @default([])
+  emergencyContact  String?
+  phoneNumber       String?               @db.VarChar(20)
+  city              String?               @db.VarChar(100)
+  country           String?               @db.VarChar(100)
+  latitude          Float?
+  longitude         Float?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+model Chat {
+  id                String                @id @default(cuid())
+  userId            String
+  title             String                @db.VarChar(255)
+  description       String?               @db.Text
+  topic             String?               @db.VarChar(100)
+  isActive          Boolean               @default(true)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages          Message[]
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Message {
+  id                String                @id @default(cuid())
+  chatId            String
+  userId            String
+  role              String
+  content           String                @db.Text
+  fileUrl           String?               @db.Text
+  fileName          String?               @db.VarChar(255)
+  citations         String[]              @default([])
+  createdAt         DateTime              @default(now())
+  
+  chat              Chat                  @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([chatId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model MedicalRecord {
+  id                String                @id @default(cuid())
+  userId            String
+  title             String                @db.VarChar(255)
+  category          String
+  description       String?               @db.Text
+  fileUrl           String                @db.Text
+  fileName          String                @db.VarChar(255)
+  fileSize          Int
+  mimeType          String                @db.VarChar(100)
+  recordDate        DateTime?
+  extractedText     String?               @db.Text
+  aiSummary         String?               @db.Text
+  abnormalValues    String[]              @default([])
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model Hospital {
+  id                String                @id @default(cuid())
+  name              String                @db.VarChar(255)
+  type              String
+  address           String                @db.Text
+  latitude          Float
+  longitude         Float
+  city              String                @db.VarChar(100)
+  state             String?               @db.VarChar(100)
+  country           String                @db.VarChar(100)
+  phoneNumber       String?               @db.VarChar(20)
+  website           String?               @db.VarChar(255)
+  rating            Float?
+  reviewCount       Int                   @default(0)
+  googlePlaceId     String?               @unique @db.VarChar(255)
+  operatingHours    String?               @db.Text
+  services          String[]              @default([])
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  @@index([latitude, longitude])
+  @@index([city])
+  @@index([type])
+}
+
+model SOSContact {
+  id                String                @id @default(cuid())
+  userId            String
+  name              String                @db.VarChar(100)
+  relationship      String                @db.VarChar(50)
+  phoneNumber       String                @db.VarChar(20)
+  priority          Int                   @default(1)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+model Notification {
+  id                String                @id @default(cuid())
+  userId            String
+  title             String                @db.VarChar(255)
+  message           String                @db.Text
+  type              String
+  isRead            Boolean               @default(false)
+  actionUrl         String?               @db.VarChar(255)
+  relatedId         String?               @db.VarChar(255)
+  scheduledFor      DateTime?
+  sentAt            DateTime              @default(now())
+  createdAt         DateTime              @default(now())
+  
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([scheduledFor])
+}
+
+model Appointment {
+  id                String                @id @default(cuid())
+  userId            String
+  title             String                @db.VarChar(255)
+  description       String?               @db.Text
+  appointmentDate   DateTime
+  duration          Int
+  status            String                @default("scheduled")
+  appointmentType   String?
+  doctorName        String?               @db.VarChar(100)
+  hospitalName      String?               @db.VarChar(255)
+  notes             String?               @db.Text
+  reminderSent      Boolean               @default(false)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([appointmentDate])
+  @@index([status])
+}
+
+model AuditLog {
+  id                String                @id @default(cuid())
+  userId            String
+  action            String                @db.VarChar(100)
+  entity            String                @db.VarChar(100)
+  entityId          String?               @db.VarChar(255)
+  changes           String?               @db.Text
+  ipAddress         String?               @db.VarChar(45)
+  userAgent         String?               @db.Text
+  createdAt         DateTime              @default(now())
+  
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model AdminUser {
+  id                String                @id @default(cuid())
+  email             String                @unique @db.VarChar(255)
+  password          String                @db.VarChar(255)
+  firstName         String                @db.VarChar(100)
+  lastName          String                @db.VarChar(100)
+  role              String                @default("moderator")
+  permissions       String[]              @default([])
+  isActive          Boolean               @default(true)
+  lastLogin         DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  @@index([email])
+}
